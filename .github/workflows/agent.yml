@@ -45,7 +45,7 @@ jobs:
       - name: Run Agent Script
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           TARGET_DOMAIN: ${{ env.TARGET_DOMAIN }}
         run: |
