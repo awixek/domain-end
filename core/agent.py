@@ -9,7 +9,7 @@ import google.generativeai as genai
 # Configure Gemini API
 API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-1.5-pro') # Model updated to pro
 
 def fetch_arxiv_papers(query, max_results=3):
     """ArXiv se real research papers fetch karta hai taaki hallucination na ho."""
@@ -48,8 +48,8 @@ def check_and_update_visited(domain):
 
 def trigger_github_child_workflow(subdomain_path):
     """GitHub API ke zariye GH_PAT use karke naya child workflow spawn karta hai."""
-    token = os.getenv("GH_PAT") # Yahan GH_PAT use ho raha hai
-    repo = os.getenv("GITHUB_REPOSITORY") # e.g., "username/repo-name"
+    token = os.getenv("GH_PAT")
+    repo = os.getenv("GITHUB_REPOSITORY")
     
     if not token or not repo:
         print("⚠️ GH_PAT Token or Repo env missing. Skipping API trigger.")
@@ -76,7 +76,6 @@ def trigger_github_child_workflow(subdomain_path):
         print(f"❌ Exception during workflow dispatch: {str(e)}")
 
 def run_agent():
-    # 1. Get current domain from environment payload or 'x' file
     current_domain = os.getenv("TARGET_DOMAIN", "")
     x_file_path = "x"
     
@@ -85,16 +84,14 @@ def run_agent():
             current_domain = f.read().strip()
             
     if not current_domain:
-        current_domain = "Mathematics related to Tech and Cryptography" # Default seed
+        current_domain = "Mathematics related to Tech and Cryptography"
 
     print(f"🎯 Current Exploring Domain: {current_domain}")
 
-    # 2. Check Global Duplicates
     if check_and_update_visited(current_domain):
-        print(f"🔄 Domain already visited/explored. Skipping to prevent loops: {current_domain}")
+        print(f"🔄 Domain already visited/explored. Skipping: {current_domain}")
         return
 
-    # 3. Grounding via ArXiv
     arxiv_context = fetch_arxiv_papers(current_domain)
 
     prompt = f"""
@@ -128,7 +125,6 @@ def run_agent():
         print("Raw text:", response.text)
         return
 
-    # 4. Handle Wall Hit State
     if data.get("is_wall_reached", False):
         print("🧱 Scientific Wall Hit!")
         report = {
@@ -143,19 +139,15 @@ def run_agent():
         os.makedirs("ideas", exist_ok=True)
         with open("ideas/execution_trail.md", "a") as trail:
             trail.write(f"\n- **Wall Reached at:** {current_domain} | **Reason:** {data.get('wall_reason')}")
-    
-    # 5. Handle Expansion State (Max 5 subdomains)
     else:
-        subdomains = data.get("subdomains", [])[:5] # Enforce strict max 5 limit
+        subdomains = data.get("subdomains", [])[:5]
         print(f"🌿 Selected Subdomains ({len(subdomains)}): {subdomains}")
         
         for sub in subdomains:
             next_path = f"{current_domain} -> {sub}"
-            
-            # Trigger GitHub API to spawn independent child workflow
             trigger_github_child_workflow(next_path)
-            time.sleep(2) # Rate limit gap between dispatches
+            time.sleep(2)
 
 if __name__ == "__main__":
     run_agent()
-    
+        
