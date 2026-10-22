@@ -5,12 +5,11 @@ import google.generativeai as genai
 
 API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-1.5-pro') # Model updated to pro
 
 def evaluate_and_rank():
     all_reports = []
     
-    # Scan entire repo for wall reports
     for root, dirs, files in os.walk("."):
         if "the_wall_report.json" in files:
             file_path = os.path.join(root, "the_wall_report.json")
@@ -46,7 +45,6 @@ def evaluate_and_rank():
             
         scored_reports.append(report)
 
-    # Sort by highest priority score and take top 20
     top_20 = sorted(scored_reports, key=lambda x: x.get('priority_score', 0), reverse=True)[:20]
 
     os.makedirs("output", exist_ok=True)
@@ -58,3 +56,4 @@ def evaluate_and_rank():
 
 if __name__ == "__main__":
     evaluate_and_rank()
+    
