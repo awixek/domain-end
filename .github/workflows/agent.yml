@@ -1,0 +1,70 @@
+# .github/workflows/agent.yml
+name: Autonomous Patent Explorer
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain_seed:
+        description: 'Root or Subdomain Seed'
+        required: true
+        default: 'Mathematics related to Tech and Cryptography'
+  repository_dispatch:
+    types: [spawn-child]
+
+jobs:
+  explore-and-recurse:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install arxiv google-generativeai requests
+
+      - name: Determine Target Domain
+        id: set-domain
+        run: |
+          if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            DOMAIN="${{ github.event.client_payload.domain_path }}"
+          else
+            DOMAIN="${{ github.event.inputs.domain_seed }}"
+          fi
+          echo "TARGET_DOMAIN=$DOMAIN" >> $GITHUB_ENV
+          echo "Target Domain is: $DOMAIN"
+
+      - name: Run Agent Script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TARGET_DOMAIN: ${{ env.TARGET_DOMAIN }}
+        run: |
+          python core/agent.py
+
+      - name: Commit and Push Visited Data and Trails
+        run: |
+          git config --global user.name "Autonomous Agent Bot"
+          git config --global user.email "agent@bot.local"
+          git add data/ ideas/ the_wall_report.json 2>/dev/null || true
+          git commit -m "Auto-explored: update trails and visited domains" || echo "No changes to commit"
+          git push || echo "No changes to push"
+
+      - name: Run Judge Aggregator (Final Output Check)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python core/judge.py
+          git add output/TOP_20_PATENT_OPPORTUNITIES.json 2>/dev/null || true
+          git commit -m "Update Top 20 Patent Goldmine" || echo "No changes needed"
+          git push || echo "No push needed"
+          
